@@ -3,6 +3,7 @@ import {
     makeWASocket, 
     useMultiFileAuthState, 
     fetchLatestBaileysVersion, 
+    Browsers, 
     delay 
 } from "@whiskeysockets/baileys";
 import pino from "pino";
@@ -12,6 +13,7 @@ import path from "path";
 const app = express();
 const port = process.env.PORT || 8000;
 
+// Temporary sessions directory setup
 const tempSessionDir = path.join(process.cwd(), 'temp_sessions');
 if (!fs.existsSync(tempSessionDir)) {
     fs.mkdirSync(tempSessionDir);
@@ -25,6 +27,7 @@ app.get('/pairing', async (req, res) => {
     let num = req.query.number;
     if (!num) return res.json({ error: "NULL" });
 
+    // Clean phone number format
     num = num.replace(/[^0-9]/g, '');
 
     const sessionID = `session_${num}_${Date.now()}`;
@@ -39,14 +42,14 @@ app.get('/pairing', async (req, res) => {
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
         
-        // FIX 1: Hardcoded Browser Array for Faster Recognition
-        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        // පයිරින් කෝඩ් එක නිවැරදි වීමට සහ වේගවත් වීමට Ubuntu Chrome පාවිච්චි කරයි
+        browser: Browsers.ubuntu("Chrome"),
         
-        // FIX 2 & 3: Optimized Handshake and Timeout
+        // --- Turbo & Login Fix Settings ---
         syncFullHistory: false, 
-        markOnlineOnConnect: true, 
-        connectTimeoutMs: 15000, 
-        defaultQueryTimeoutMs: 15000, 
+        markOnlineOnConnect: true,
+        connectTimeoutMs: 30000,
+        defaultQueryTimeoutMs: 30000, 
         keepAliveIntervalMs: 10000,
         generateHighQualityLinkPreview: false,
         msgRetryCounterCache: pino({ level: "silent" }),
@@ -54,8 +57,10 @@ app.get('/pairing', async (req, res) => {
 
     try {
         if (!conn.authState.creds.registered) {
-            await delay(1500);
+            // Socket එක ස්ථාවර වීමට තත්පර 2ක් රැඳී සිටීම
+            await delay(2000);
             let code = await conn.requestPairingCode(num);
+            
             if (code && !res.headersSent) {
                 res.json({ code: code });
             }
@@ -71,11 +76,16 @@ app.get('/pairing', async (req, res) => {
 
         if (connection === 'open') {
             try {
-                await conn.sendMessage(conn.user.id, { text: "CONNECTED" });
+                // යුසර්ට සාර්ථක පණිවිඩයක් යැවීම
+                await conn.sendMessage(conn.user.id, { 
+                    text: "*✅ LUCIFER-MD V26 CONNECTED*\n\nYour session is ready for use." 
+                });
+
+                // ලොග් වූ පසු සර්වර් එකේ ඉඩ ඉතිරි කිරීමට සෙෂන් එක මකා දැමීම
                 setTimeout(async () => {
                     await conn.logout();
                     if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-                }, 5000);
+                }, 10000);
             } catch (err) {}
         }
 
@@ -84,10 +94,13 @@ app.get('/pairing', async (req, res) => {
             if (reason !== 401) {
                 setTimeout(() => {
                     if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-                }, 3000);
+                }, 5000);
             }
         }
     });
 });
 
-app.listen(port, "0.0.0.0", () => {});
+app.listen(port, "0.0.0.0", () => {
+    // Console output for tracking
+    console.log(`LUCIFER-MD PAIRING ACTIVE ON PORT ${port}`);
+});

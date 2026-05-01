@@ -10,6 +10,8 @@
     "express": "latest",
     "@whiskeysockets/baileys": "latest",
     "fs-extra": "latest",
-    "pino": "latest"
+    "pino": "latest",
+    "axios": "latest",
+    "uuid": "latest"
   }
 }

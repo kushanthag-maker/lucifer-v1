@@ -2,164 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LUCIFER-MD V26 PAIRING</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUCIFER-MD V26 PRO</title>
     <style>
-        :root {
-            --neon-cyan: #00f3ff;
-            --neon-pink: #ff00ff;
-            --bg-dark: #050505;
-        }
-
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            background: var(--bg-dark);
-            color: white;
-            font-family: 'Segoe UI', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            background: rgba(10, 10, 10, 0.95);
-            border: 2px solid var(--neon-cyan);
-            padding: 40px 20px;
-            box-shadow: 0 0 20px var(--neon-cyan);
-            border-radius: 20px;
-            text-align: center;
-            width: 100%;
-            max-width: 400px; /* Mobile එකට ගැලපෙන size එක */
-        }
-
-        h1 {
-            color: var(--neon-cyan);
-            font-size: 2.2rem;
-            margin: 0 0 10px 0;
-            text-shadow: 0 0 15px var(--neon-cyan);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        p {
-            font-size: 0.9rem;
-            color: #aaa;
-            margin-bottom: 25px;
-        }
-
-        input {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1.5px solid var(--neon-pink);
-            color: white;
-            padding: 15px;
-            font-size: 1.2rem;
-            width: 100%;
-            border-radius: 12px;
-            outline: none;
-            text-align: center;
-            margin-bottom: 20px;
-            transition: 0.3s;
-        }
-
-        input:focus {
-            box-shadow: 0 0 15px var(--neon-pink);
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        button {
-            background: var(--neon-cyan);
-            color: black;
-            border: none;
-            padding: 15px;
-            font-size: 1rem;
-            font-weight: bold;
-            width: 100%;
-            border-radius: 12px;
-            cursor: pointer;
-            text-transform: uppercase;
-            box-shadow: 0 0 10px var(--neon-cyan);
-            transition: 0.3s;
-        }
-
-        button:active {
-            transform: scale(0.98);
-        }
-
-        #result {
-            margin-top: 30px;
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: white;
-            text-shadow: 0 0 20px var(--neon-pink);
-            letter-spacing: 5px;
-            min-height: 40px;
-        }
-
-        .loader {
-            font-size: 1rem;
-            color: var(--neon-cyan);
-            letter-spacing: 1px;
-        }
+        body { background: #000; color: #00ffcc; font-family: 'Courier New', monospace; text-align: center; padding: 50px; }
+        .box { border: 2px solid #00ffcc; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px #00ffcc; display: inline-block; }
+        input { padding: 10px; border-radius: 5px; border: none; width: 250px; margin-bottom: 20px; text-align: center; }
+        button { background: #00ffcc; color: #000; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #code { font-size: 2em; margin-top: 20px; color: #ff0055; letter-spacing: 5px; }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1>LUCIFER-MD</h1>
-        <p>Enter with Country Code (94...)</p>
-        
-        <input type="number" id="num" placeholder="947xxxxxxxx" autocomplete="off">
-        <button onclick="getCode()" id="btn">Get Code</button>
-        
-        <div id="result"></div>
+    <div class="box">
+        <h1>LUCIFER-MD V26</h1>
+        <p>Enter your number with country code</p>
+        <input type="text" id="number" placeholder="9475xxxxxxx"><br>
+        <button onclick="getCode()">GET PAIRING CODE</button>
+        <div id="code"></div>
     </div>
 
     <script>
         async function getCode() {
-            const num = document.getElementById('num').value;
-            const resDiv = document.getElementById('result');
-            const btn = document.getElementById('btn');
+            const num = document.getElementById('number').value;
+            const codeDiv = document.getElementById('code');
+            if(!num) return alert("Enter Number!");
             
-            if (!num) {
-                resDiv.style.fontSize = "1rem";
-                resDiv.style.color = "#ff4444";
-                resDiv.innerText = "ENTER NUMBER!";
-                return;
-            }
-
-            btn.disabled = true;
-            btn.style.opacity = "0.5";
-            resDiv.style.color = "var(--neon-cyan)";
-            resDiv.innerHTML = '<span class="loader">CONNECTING...</span>';
+            codeDiv.innerHTML = "GENERATING...";
             
             try {
-                // Connection Fix: Full Path එක වෙනුවට Relative Path පාවිච්චි කිරීම
-                const response = await fetch(`/pairing?number=${num}`);
-                const data = await response.json();
-                
-                if (data.code) {
-                    resDiv.style.fontSize = "2.5rem";
-                    resDiv.style.color = "white";
-                    resDiv.innerText = data.code;
+                const res = await fetch(`/get_pairing?number=${num}`);
+                const data = await res.json();
+                if(data.code) {
+                    codeDiv.innerHTML = data.code;
                 } else {
-                    resDiv.style.fontSize = "1rem";
-                    resDiv.style.color = "#ff4444";
-                    resDiv.innerText = data.error || "TRY AGAIN";
+                    codeDiv.innerHTML = "ERROR! TRY AGAIN";
                 }
-            } catch (err) {
-                resDiv.style.fontSize = "1rem";
-                resDiv.style.color = "#ff4444";
-                resDiv.innerText = "SERVER ERROR!";
-            } finally {
-                btn.disabled = false;
-                btn.style.opacity = "1";
+            } catch(e) {
+                codeDiv.innerHTML = "SERVER ERROR";
             }
         }
     </script>

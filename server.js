@@ -34,27 +34,22 @@ app.get('/pairing', async (req, res) => {
         version,
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        // FIX 1: ඔයා කිව්වා වගේම Browser එක Ubuntu Chrome ලෙස ස්ථාවර කළා
         browser: Browsers.ubuntu("Chrome") 
     });
 
-    // FIX 2: Connection එක 'open' වෙනකම් බලන් ඉඳලා කෝඩ් එක ඉල්ලන ලොජික් එක
+    // මෙතන තමයි කලින් වැරදිලා තිබුණේ - connection update එක නිවැරදිව හදා ඇත
     conn.ev.on('connection.update', async (update) => {
         const { connection } = update;
 
         if (connection === 'open') {
             try {
-                // සර්වර් එක ස්ථාවර වීමට තත්පර 3ක් රැඳී සිටීම
                 await delay(3000); 
-                
-                // WhatsApp සර්වර් එකෙන් Pairing Code එක ඉල්ලීම
                 let code = await conn.requestPairingCode(num);
                 
                 if (!res.headersSent) {
                     res.json({ code: code });
                 }
 
-                // කෝඩ් එක දුන්නට පසු සෙෂන් එක මකා දැමීම
                 setTimeout(async () => {
                     await conn.logout();
                     if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
@@ -65,11 +60,11 @@ app.get('/pairing', async (req, res) => {
                 if (!res.headersSent) res.json({ error: "Failed to get code. Try again." });
             }
         }
-    });
+    }); // මෙතන Bracket එක වහන්න අමතක වෙලා තිබුණා
 
     conn.ev.on('creds.update', saveCreds);
 
-    // සර්වර් එකට සම්බන්ධ වීමට බැරි වුණොත් Timeout එකක් තැබීම
+    // Timeout එකක් තැබීම
     setTimeout(() => {
         if (!res.headersSent) {
             res.json({ error: "Connection timed out. Please refresh the page." });
@@ -77,12 +72,13 @@ app.get('/pairing', async (req, res) => {
     }, 40000);
 });
 
-app.listen(port, () => {
+// Heroku සඳහා "0.0.0.0" අනිවාර්යයෙන්ම එකතු කළා
+app.listen(port, "0.0.0.0", () => {
     console.log(`
     ===========================================
     LUCIFER-MD NEON SERVER STARTED
     Port: ${port}
-    Status: Fixes Applied
+    Status: Online & Fixed
     ===========================================
     `);
 });

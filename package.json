@@ -11,6 +11,8 @@
     "@whiskeysockets/baileys": "latest",
     "fs-extra": "latest",
     "pino": "latest",
-    "axios": "latest"
+    "axios": "latest",
+    "path": "latest",
+    "url": "latest"
   }
 }

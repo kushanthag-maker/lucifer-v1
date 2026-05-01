@@ -27,7 +27,6 @@ app.get('/pairing', async (req, res) => {
     let num = req.query.number;
     if (!num) return res.json({ error: "Please provide a phone number!" });
 
-    // අංකය පිරිසිදු කිරීම
     num = num.replace(/[^0-9]/g, '');
 
     const sessionID = `session_${num}_${Date.now()}`;
@@ -43,8 +42,10 @@ app.get('/pairing', async (req, res) => {
         logger: pino({ level: "silent" }),
         browser: ["Ubuntu", "Chrome", "20.0.04"],
         
-        // --- ඔයා දුන්න වේගය වැඩි කරන Turbo Settings ---
+        // --- මෙන්න ඔයා ඉල්ලපු වෙනස විතරක් ඇතුළත් කළා ---
         syncFullHistory: false, 
+        // --------------------------------------------
+
         markOnlineOnConnect: true,
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 0,
@@ -52,10 +53,9 @@ app.get('/pairing', async (req, res) => {
         generateHighQualityLinkPreview: false,
     });
 
-    // Pairing Code එක ඉල්ලීමේ කොටස
     try {
         if (!conn.authState.creds.registered) {
-            await delay(3000); // Socket එක සූදානම් වෙන්න තත්පර 3ක්
+            await delay(3000);
             let code = await conn.requestPairingCode(num);
             
             if (code && !res.headersSent) {
@@ -69,7 +69,6 @@ app.get('/pairing', async (req, res) => {
 
     conn.ev.on('creds.update', saveCreds);
 
-    // Connection එක ගැන විමසිල්ලෙන් සිටීම
     conn.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
 
@@ -77,7 +76,6 @@ app.get('/pairing', async (req, res) => {
             try {
                 console.log(`[LUCIFER-MD] Connected: ${num}`);
                 
-                // සාර්ථකව ලොග් වුණාම User ට යන මැසේජ් එක
                 const successMsg = `
 *✅ LUCIFER-MD V26 CONNECTED!*
 
@@ -90,7 +88,6 @@ app.get('/pairing', async (req, res) => {
 
                 await conn.sendMessage(conn.user.id, { text: successMsg });
 
-                // සෙෂන් එක ඉවර නිසා සර්වර් එක ක්ලීන් කිරීම
                 setTimeout(async () => {
                     await conn.logout();
                     if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
@@ -104,7 +101,6 @@ app.get('/pairing', async (req, res) => {
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
             if (reason !== 401) {
-                // අවුලක් වුණොත් සෙෂන් එක මකා දැමීම
                 setTimeout(() => {
                     if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
                 }, 5000);

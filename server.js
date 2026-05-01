@@ -3,7 +3,6 @@ import {
     makeWASocket, 
     useMultiFileAuthState, 
     fetchLatestBaileysVersion, 
-    Browsers, 
     delay 
 } from "@whiskeysockets/baileys";
 import pino from "pino";
@@ -24,7 +23,7 @@ app.get('/', (req, res) => {
 
 app.get('/pairing', async (req, res) => {
     let num = req.query.number;
-    if (!num) return res.json({ error: "Please provide a phone number!" });
+    if (!num) return res.json({ error: "NULL" });
 
     num = num.replace(/[^0-9]/g, '');
 
@@ -39,32 +38,30 @@ app.get('/pairing', async (req, res) => {
         version,
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        // Desktop Chrome Browser එකක් විදියට පෙන්වීම ලොගින් ස්පීඩ් එක වැඩි කරයි
-        browser: Browsers.ubuntu("Chrome"),
         
-        // --- FAST LOGIN SETTINGS ---
+        // FIX 1: Hardcoded Browser Array for Faster Recognition
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        
+        // FIX 2 & 3: Optimized Handshake and Timeout
         syncFullHistory: false, 
-        markOnlineOnConnect: false, // ලොග් වෙන වෙලාවට ඔන්ලයින් පෙන්වීම ඕන නැහැ (වේගය වැඩි කරයි)
-        connectTimeoutMs: 30000, // තත්පර 30ක උපරිම කාලයක්
-        defaultQueryTimeoutMs: 30000, 
-        keepAliveIntervalMs: 30000,
+        markOnlineOnConnect: true, 
+        connectTimeoutMs: 15000, 
+        defaultQueryTimeoutMs: 15000, 
+        keepAliveIntervalMs: 10000,
         generateHighQualityLinkPreview: false,
-        msgRetryCounterCache: pino({ level: "silent" }), // Retry මැසේජ් පාලනය
+        msgRetryCounterCache: pino({ level: "silent" }),
     });
 
     try {
-        // ලියාපදිංචි වී නොමැති නම් පමණක් කෝඩ් එක ඉල්ලන්න
         if (!conn.authState.creds.registered) {
-            await delay(2000); // ඩේටා ලෝඩ් වෙන්න පොඩි වෙලාවක්
+            await delay(1500);
             let code = await conn.requestPairingCode(num);
-            
             if (code && !res.headersSent) {
                 res.json({ code: code });
             }
         }
     } catch (e) {
-        console.error("Pairing Error:", e);
-        if (!res.headersSent) res.json({ error: "Request failed. Try again!" });
+        if (!res.headersSent) res.json({ error: "ERROR" });
     }
 
     conn.ev.on('creds.update', saveCreds);
@@ -74,28 +71,12 @@ app.get('/pairing', async (req, res) => {
 
         if (connection === 'open') {
             try {
-                console.log(`[LUCIFER-MD] Connected: ${num}`);
-                
-                const successMsg = `
-*✅ LUCIFER-MD V26 CONNECTED!*
-
-*Device:* ${num}
-*Status:* High Speed Login Active ⚡
-
-> *Regards, Sandaru Udan*
-                `;
-
-                await conn.sendMessage(conn.user.id, { text: successMsg });
-
-                // මැසේජ් එක ගිය සැනින් ලොග් අවුට් වීම (සර්වර් එකේ බර අඩු කිරීමට)
+                await conn.sendMessage(conn.user.id, { text: "CONNECTED" });
                 setTimeout(async () => {
                     await conn.logout();
                     if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-                }, 8000);
-
-            } catch (err) {
-                console.log("Success Msg Error:", err);
-            }
+                }, 5000);
+            } catch (err) {}
         }
 
         if (connection === 'close') {
@@ -103,12 +84,10 @@ app.get('/pairing', async (req, res) => {
             if (reason !== 401) {
                 setTimeout(() => {
                     if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-                }, 5000);
+                }, 3000);
             }
         }
     });
 });
 
-app.listen(port, "0.0.0.0", () => {
-    console.log(`🚀 LUCIFER-MD V26: High Speed Server Started on ${port}`);
-});
+app.listen(port, "0.0.0.0", () => {});

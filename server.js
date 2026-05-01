@@ -13,7 +13,6 @@ import path from "path";
 const app = express();
 const port = process.env.PORT || 8000;
 
-// Sessions තාවකාලිකව තියාගන්න folder එකක් හදනවා
 const tempSessionDir = path.join(process.cwd(), 'temp_sessions');
 if (!fs.existsSync(tempSessionDir)) {
     fs.mkdirSync(tempSessionDir);
@@ -40,22 +39,23 @@ app.get('/pairing', async (req, res) => {
         version,
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        // Desktop Chrome Browser එකක් විදියට පෙන්වීම ලොගින් ස්පීඩ් එක වැඩි කරයි
+        browser: Browsers.ubuntu("Chrome"),
         
-        // --- මෙන්න ඔයා ඉල්ලපු වෙනස විතරක් ඇතුළත් කළා ---
+        // --- FAST LOGIN SETTINGS ---
         syncFullHistory: false, 
-        // --------------------------------------------
-
-        markOnlineOnConnect: true,
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
-        keepAliveIntervalMs: 10000,
+        markOnlineOnConnect: false, // ලොග් වෙන වෙලාවට ඔන්ලයින් පෙන්වීම ඕන නැහැ (වේගය වැඩි කරයි)
+        connectTimeoutMs: 30000, // තත්පර 30ක උපරිම කාලයක්
+        defaultQueryTimeoutMs: 30000, 
+        keepAliveIntervalMs: 30000,
         generateHighQualityLinkPreview: false,
+        msgRetryCounterCache: pino({ level: "silent" }), // Retry මැසේජ් පාලනය
     });
 
     try {
+        // ලියාපදිංචි වී නොමැති නම් පමණක් කෝඩ් එක ඉල්ලන්න
         if (!conn.authState.creds.registered) {
-            await delay(3000);
+            await delay(2000); // ඩේටා ලෝඩ් වෙන්න පොඩි වෙලාවක්
             let code = await conn.requestPairingCode(num);
             
             if (code && !res.headersSent) {
@@ -64,7 +64,7 @@ app.get('/pairing', async (req, res) => {
         }
     } catch (e) {
         console.error("Pairing Error:", e);
-        if (!res.headersSent) res.json({ error: "Request timed out. Please try again." });
+        if (!res.headersSent) res.json({ error: "Request failed. Try again!" });
     }
 
     conn.ev.on('creds.update', saveCreds);
@@ -80,18 +80,18 @@ app.get('/pairing', async (req, res) => {
 *✅ LUCIFER-MD V26 CONNECTED!*
 
 *Device:* ${num}
-*Mode:* Turbo Speed ⚡
-*Team:* Luviya MD Team & Team Grim-X
+*Status:* High Speed Login Active ⚡
 
 > *Regards, Sandaru Udan*
                 `;
 
                 await conn.sendMessage(conn.user.id, { text: successMsg });
 
+                // මැසේජ් එක ගිය සැනින් ලොග් අවුට් වීම (සර්වර් එකේ බර අඩු කිරීමට)
                 setTimeout(async () => {
                     await conn.logout();
                     if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-                }, 10000);
+                }, 8000);
 
             } catch (err) {
                 console.log("Success Msg Error:", err);
@@ -110,11 +110,5 @@ app.get('/pairing', async (req, res) => {
 });
 
 app.listen(port, "0.0.0.0", () => {
-    console.log(`
---------------------------------------------------
-🚀 LUCIFER-MD V26 PAIRING SERVER STARTED
-⚡ Port: ${port}
-🛠 Status: Turbo Mode & Success Msg Active
---------------------------------------------------
-    `);
+    console.log(`🚀 LUCIFER-MD V26: High Speed Server Started on ${port}`);
 });

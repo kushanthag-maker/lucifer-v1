@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LUCIFER-MD PAIRING</title>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #00f3ff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-shadow: 0 0 10px #00f3ff;
+        }
+        .container {
+            border: 2px solid #00f3ff;
+            padding: 30px;
+            box-shadow: 0 0 20px #00f3ff, inset 0 0 10px #00f3ff;
+            border-radius: 15px;
+            text-align: center;
+        }
+        input {
+            background: transparent;
+            border: 1px solid #00f3ff;
+            color: white;
+            padding: 10px;
+            margin: 10px;
+            outline: none;
+            text-align: center;
+        }
+        button {
+            background: #00f3ff;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 10px #00f3ff;
+        }
+        #result { margin-top: 20px; font-size: 25px; letter-spacing: 5px; color: #ff00ff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LUCIFER-MD V26</h1>
+        <p>ENTER NUMBER WITH COUNTRY CODE (94xxx)</p>
+        <input type="text" id="num" placeholder="94752310513">
+        <br>
+        <button onclick="getCode()">GET PAIRING CODE</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function getCode() {
+            const num = document.getElementById('num').value;
+            const resDiv = document.getElementById('result');
+            resDiv.innerText = "GENERATING...";
+            
+            const response = await fetch(`/pairing?number=${num}`);
+            const data = await response.json();
+            
+            if(data.code) {
+                resDiv.innerText = data.code;
+            } else {
+                resDiv.innerText = "ERROR!";
+            }
+        }
+    </script>
+</body>
+</html>

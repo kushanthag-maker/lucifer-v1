@@ -1,85 +1,86 @@
 import express from 'express';
-import { 
-    makeWASocket, 
-    useMultiFileAuthState, 
-    fetchLatestBaileysVersion, 
+import {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    fetchLatestBaileysVersion,
+    makeCacheableSignalKeyStore,
     delay,
-    DisconnectReason
+    DisconnectReason,
+    Browsers
 } from "@whiskeysockets/baileys";
 import pino from "pino";
 import fs from "fs-extra";
 import path from "path";
-import { GoogleGenerativeAI } from "@google/genai";
 
 const app = express();
 const port = process.env.PORT || 8000;
 
-// Gemini AI Setup (ඔයාගේ API Key එක මෙතනට දාන්න)
-const genAI = new GoogleGenerativeAI("ඔයාගේ_GEMINI_API_KEY_එක");
+// Sessions තාවකාලිකව ගබඩා කරන තැන
+const authFolder = 'auth_info';
 
-const tempSessionDir = path.join(process.cwd(), 'temp_sessions');
-if (!fs.existsSync(tempSessionDir)) fs.mkdirSync(tempSessionDir);
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'index.html'));
-});
-
-app.get('/pairing', async (req, res) => {
-    let num = req.query.number;
-    if (!num) return res.json({ error: "No number" });
-
-    num = num.replace(/[^0-9]/g, '');
-    const sessionID = `LUCIFER_${uuidv4().split('-')[0]}`;
-    const sessionPath = path.join(tempSessionDir, sessionID);
-    
-    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+async function startLucifer() {
+    const { state, saveCreds } = await useMultiFileAuthState(authFolder);
     const { version } = await fetchLatestBaileysVersion();
 
     const conn = makeWASocket({
-        auth: state,
         version,
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })),
+        },
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        // FIX: නව Baileys version එකට ගැළපෙන Browser array එක
-        browser: ["Ubuntu", "Chrome", "20.0.04"], 
-        syncFullHistory: false,
-        markOnlineOnConnect: true,
-        connectTimeoutMs: 30000
+        // පයිරින් කෝඩ් එක හරියටම එන්න නම් මේ Browser එක අනිවාර්යයි
+        browser: ["Ubuntu", "Chrome", "20.0.04"]
     });
 
-    try {
+    // --- PAIRING CODE ENDPOINT ---
+    app.get('/pairing', async (req, res) => {
+        let num = req.query.number;
+        if (!num) return res.json({ error: "Please provide a phone number." });
+
+        num = num.replace(/[^0-9]/g, '');
+
         if (!conn.authState.creds.registered) {
-            await delay(3000);
-            const code = await conn.requestPairingCode(num);
-            if (code && !res.headersSent) {
-                res.json({ code: code });
+            console.log(`🔔 Generating Pairing Code for: ${num}`);
+            
+            // ඔයාගේ කෝඩ් එකේ තිබ්බ විදියටම stability එකට තත්පර කිහිපයක් රැඳී සිටීම
+            await delay(8000); 
+            
+            try {
+                const code = await conn.requestPairingCode(num);
+                if (!res.headersSent) {
+                    res.json({ code: code });
+                }
+            } catch (err) {
+                console.error("Pairing Error:", err);
+                if (!res.headersSent) res.json({ error: "Pairing Request Failed" });
             }
+        } else {
+            res.json({ message: "Already Logged In" });
         }
-    } catch (e) {
-        console.log("Pairing Error:", e);
-        if (!res.headersSent) res.json({ error: "Pairing Failed" });
-    }
+    });
 
     conn.ev.on('creds.update', saveCreds);
 
-    conn.ev.on('connection.update', async (update) => {
+    conn.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'open') {
-            await conn.sendMessage(conn.user.id, { text: "*LUCIFER-MD V26 CONNECTED*" });
-            setTimeout(async () => {
-                await conn.logout();
-                if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-            }, 10000);
+            console.log('✅ LUCIFER-MD CONNECTED SUCCESSFULLY');
         }
         if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
-            if (reason !== DisconnectReason.loggedOut) {
-                if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-            }
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) startLucifer();
         }
     });
-});
 
-app.listen(port, "0.0.0.0", () => {
-    console.log(`Server started on ${port}`);
+    // Default route
+    app.get('/', (req, res) => {
+        res.send("LUCIFER-MD PAIRING SERVER IS RUNNING...");
+    });
+}
+
+app.listen(port, () => {
+    console.log(`Server is live on port ${port}`);
+    startLucifer();
 });

@@ -1,0 +1,17 @@
+{
+  "name": "lucifer-md-v26",
+  "version": "2.6.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "@google/genai": "latest",
+    "axios": "latest",
+    "form-data": "latest",
+    "pino": "latest",
+    "qrcode-terminal": "latest"
+  }
+}

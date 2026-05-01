@@ -1,17 +1,16 @@
 {
-  "name": "lucifer-md-v26",
+  "name": "lucifer-md-pairing",
   "version": "2.6.0",
-  "main": "index.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "dependencies": {
+    "express": "latest",
     "@whiskeysockets/baileys": "latest",
-    "@google/genai": "latest",
-    "axios": "latest",
-    "form-data": "latest",
+    "fs-extra": "latest",
     "pino": "latest",
-    "qrcode-terminal": "latest"
+    "axios": "latest"
   }
 }

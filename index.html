@@ -2,112 +2,110 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LUCIFER-MD V26 PAIRING</title>
     <style>
         :root {
             --neon-cyan: #00f3ff;
             --neon-pink: #ff00ff;
-            --bg-dark: #0a0a0a;
+            --bg-dark: #050505;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             background: var(--bg-dark);
             color: white;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            overflow: hidden;
+            padding: 20px;
         }
 
         .container {
-            background: rgba(0, 0, 0, 0.8);
-            border: 3px solid var(--neon-cyan);
-            padding: 50px; /* Padding එක වැඩි කළා UI එක ලොකු වෙන්න */
-            box-shadow: 0 0 30px var(--neon-cyan), inset 0 0 15px var(--neon-cyan);
-            border-radius: 25px;
+            background: rgba(10, 10, 10, 0.95);
+            border: 2px solid var(--neon-cyan);
+            padding: 40px 20px;
+            box-shadow: 0 0 20px var(--neon-cyan);
+            border-radius: 20px;
             text-align: center;
-            max-width: 500px;
-            width: 90%;
-            transform: scale(1.1); /* මුළු UI එකම 10% ක් zoom කළා */
+            width: 100%;
+            max-width: 400px; /* Mobile එකට ගැලපෙන size එක */
         }
 
         h1 {
             color: var(--neon-cyan);
-            font-size: 3rem; /* හෙඩින් එක ලොකු කළා */
-            margin-bottom: 10px;
-            text-shadow: 0 0 20px var(--neon-cyan);
-            font-weight: 800;
+            font-size: 2.2rem;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 15px var(--neon-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         p {
-            font-size: 1.2rem;
-            color: #ccc;
-            margin-bottom: 30px;
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 25px;
         }
 
         input {
-            background: transparent;
-            border: 2px solid var(--neon-pink);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid var(--neon-pink);
             color: white;
             padding: 15px;
-            font-size: 1.5rem; /* Input text එක ලොකු කළා */
-            width: 80%;
-            border-radius: 10px;
+            font-size: 1.2rem;
+            width: 100%;
+            border-radius: 12px;
             outline: none;
             text-align: center;
-            margin-bottom: 25px;
-            box-shadow: 0 0 10px var(--neon-pink);
+            margin-bottom: 20px;
             transition: 0.3s;
         }
 
         input:focus {
-            box-shadow: 0 0 25px var(--neon-pink);
-            border-color: #fff;
+            box-shadow: 0 0 15px var(--neon-pink);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         button {
             background: var(--neon-cyan);
             color: black;
             border: none;
-            padding: 15px 40px;
-            font-size: 1.3rem;
+            padding: 15px;
+            font-size: 1rem;
             font-weight: bold;
-            border-radius: 50px;
+            width: 100%;
+            border-radius: 12px;
             cursor: pointer;
             text-transform: uppercase;
-            box-shadow: 0 0 15px var(--neon-cyan);
-            transition: 0.4s;
+            box-shadow: 0 0 10px var(--neon-cyan);
+            transition: 0.3s;
         }
 
-        button:hover {
-            background: white;
-            box-shadow: 0 0 30px white;
-            transform: translateY(-5px);
+        button:active {
+            transform: scale(0.98);
         }
 
         #result {
-            margin-top: 40px;
-            font-size: 3rem; /* Pairing Code එක ගොඩක් ලොකුවට පේන්න */
-            font-weight: bold;
-            color: var(--neon-pink);
-            text-shadow: 0 0 25px var(--neon-pink);
-            letter-spacing: 8px;
-            min-height: 50px;
+            margin-top: 30px;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            text-shadow: 0 0 20px var(--neon-pink);
+            letter-spacing: 5px;
+            min-height: 40px;
         }
 
-        /* Loading Animation */
-        .loading {
-            font-size: 1.2rem;
+        .loader {
+            font-size: 1rem;
             color: var(--neon-cyan);
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            50% { opacity: 0; }
+            letter-spacing: 1px;
         }
     </style>
 </head>
@@ -115,11 +113,10 @@
 
     <div class="container">
         <h1>LUCIFER-MD</h1>
-        <p>Enter number with country code (e.g. 94752310513)</p>
+        <p>Enter with Country Code (94...)</p>
         
-        <input type="number" id="num" placeholder="947xxxxxxxx" required>
-        <br>
-        <button onclick="getCode()">Get Pairing Code</button>
+        <input type="number" id="num" placeholder="947xxxxxxxx" autocomplete="off">
+        <button onclick="getCode()" id="btn">Get Code</button>
         
         <div id="result"></div>
     </div>
@@ -128,29 +125,41 @@
         async function getCode() {
             const num = document.getElementById('num').value;
             const resDiv = document.getElementById('result');
+            const btn = document.getElementById('btn');
             
             if (!num) {
-                resDiv.style.fontSize = "1.5rem";
+                resDiv.style.fontSize = "1rem";
+                resDiv.style.color = "#ff4444";
                 resDiv.innerText = "ENTER NUMBER!";
                 return;
             }
 
-            resDiv.innerHTML = '<span class="loading">GENERATING...</span>';
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+            resDiv.style.color = "var(--neon-cyan)";
+            resDiv.innerHTML = '<span class="loader">CONNECTING...</span>';
             
             try {
+                // Connection Fix: Full Path එක වෙනුවට Relative Path පාවිච්චි කිරීම
                 const response = await fetch(`/pairing?number=${num}`);
                 const data = await response.json();
                 
                 if (data.code) {
-                    resDiv.style.fontSize = "3rem";
+                    resDiv.style.fontSize = "2.5rem";
+                    resDiv.style.color = "white";
                     resDiv.innerText = data.code;
                 } else {
-                    resDiv.style.fontSize = "1.5rem";
-                    resDiv.innerText = data.error || "ERROR!";
+                    resDiv.style.fontSize = "1rem";
+                    resDiv.style.color = "#ff4444";
+                    resDiv.innerText = data.error || "TRY AGAIN";
                 }
             } catch (err) {
-                resDiv.style.fontSize = "1.5rem";
-                resDiv.innerText = "SERVER DOWN!";
+                resDiv.style.fontSize = "1rem";
+                resDiv.style.color = "#ff4444";
+                resDiv.innerText = "SERVER ERROR!";
+            } finally {
+                btn.disabled = false;
+                btn.style.opacity = "1";
             }
         }
     </script>

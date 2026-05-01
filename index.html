@@ -1,54 +1,126 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>LUCIFER-MD PAIRING</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUCIFER-MD V26 PAIRING</title>
     <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff00ff;
+            --bg-dark: #0a0a0a;
+        }
+
         body {
-            background: #0a0a0a;
-            color: #00f3ff;
-            font-family: 'Courier New', Courier, monospace;
+            background: var(--bg-dark);
+            color: white;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            text-shadow: 0 0 10px #00f3ff;
+            overflow: hidden;
         }
+
         .container {
-            border: 2px solid #00f3ff;
-            padding: 30px;
-            box-shadow: 0 0 20px #00f3ff, inset 0 0 10px #00f3ff;
-            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid var(--neon-cyan);
+            padding: 50px; /* Padding එක වැඩි කළා UI එක ලොකු වෙන්න */
+            box-shadow: 0 0 30px var(--neon-cyan), inset 0 0 15px var(--neon-cyan);
+            border-radius: 25px;
             text-align: center;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(1.1); /* මුළු UI එකම 10% ක් zoom කළා */
         }
+
+        h1 {
+            color: var(--neon-cyan);
+            font-size: 3rem; /* හෙඩින් එක ලොකු කළා */
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px var(--neon-cyan);
+            font-weight: 800;
+        }
+
+        p {
+            font-size: 1.2rem;
+            color: #ccc;
+            margin-bottom: 30px;
+        }
+
         input {
             background: transparent;
-            border: 1px solid #00f3ff;
+            border: 2px solid var(--neon-pink);
             color: white;
-            padding: 10px;
-            margin: 10px;
+            padding: 15px;
+            font-size: 1.5rem; /* Input text එක ලොකු කළා */
+            width: 80%;
+            border-radius: 10px;
             outline: none;
             text-align: center;
+            margin-bottom: 25px;
+            box-shadow: 0 0 10px var(--neon-pink);
+            transition: 0.3s;
         }
+
+        input:focus {
+            box-shadow: 0 0 25px var(--neon-pink);
+            border-color: #fff;
+        }
+
         button {
-            background: #00f3ff;
+            background: var(--neon-cyan);
             color: black;
             border: none;
-            padding: 10px 20px;
-            cursor: pointer;
+            padding: 15px 40px;
+            font-size: 1.3rem;
             font-weight: bold;
-            box-shadow: 0 0 10px #00f3ff;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px var(--neon-cyan);
+            transition: 0.4s;
         }
-        #result { margin-top: 20px; font-size: 25px; letter-spacing: 5px; color: #ff00ff; }
+
+        button:hover {
+            background: white;
+            box-shadow: 0 0 30px white;
+            transform: translateY(-5px);
+        }
+
+        #result {
+            margin-top: 40px;
+            font-size: 3rem; /* Pairing Code එක ගොඩක් ලොකුවට පේන්න */
+            font-weight: bold;
+            color: var(--neon-pink);
+            text-shadow: 0 0 25px var(--neon-pink);
+            letter-spacing: 8px;
+            min-height: 50px;
+        }
+
+        /* Loading Animation */
+        .loading {
+            font-size: 1.2rem;
+            color: var(--neon-cyan);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h1>LUCIFER-MD V26</h1>
-        <p>ENTER NUMBER WITH COUNTRY CODE (94xxx)</p>
-        <input type="text" id="num" placeholder="94752310513">
+        <h1>LUCIFER-MD</h1>
+        <p>Enter number with country code (e.g. 94752310513)</p>
+        
+        <input type="number" id="num" placeholder="947xxxxxxxx" required>
         <br>
-        <button onclick="getCode()">GET PAIRING CODE</button>
+        <button onclick="getCode()">Get Pairing Code</button>
+        
         <div id="result"></div>
     </div>
 
@@ -56,15 +128,29 @@
         async function getCode() {
             const num = document.getElementById('num').value;
             const resDiv = document.getElementById('result');
-            resDiv.innerText = "GENERATING...";
             
-            const response = await fetch(`/pairing?number=${num}`);
-            const data = await response.json();
+            if (!num) {
+                resDiv.style.fontSize = "1.5rem";
+                resDiv.innerText = "ENTER NUMBER!";
+                return;
+            }
+
+            resDiv.innerHTML = '<span class="loading">GENERATING...</span>';
             
-            if(data.code) {
-                resDiv.innerText = data.code;
-            } else {
-                resDiv.innerText = "ERROR!";
+            try {
+                const response = await fetch(`/pairing?number=${num}`);
+                const data = await response.json();
+                
+                if (data.code) {
+                    resDiv.style.fontSize = "3rem";
+                    resDiv.innerText = data.code;
+                } else {
+                    resDiv.style.fontSize = "1.5rem";
+                    resDiv.innerText = data.error || "ERROR!";
+                }
+            } catch (err) {
+                resDiv.style.fontSize = "1.5rem";
+                resDiv.innerText = "SERVER DOWN!";
             }
         }
     </script>

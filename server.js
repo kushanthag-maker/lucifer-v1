@@ -3,107 +3,77 @@ import {
     makeWASocket, 
     useMultiFileAuthState, 
     fetchLatestBaileysVersion, 
-    Browsers, 
-    delay 
+    delay,
+    DisconnectReason
 } from "@whiskeysockets/baileys";
 import pino from "pino";
 import fs from "fs-extra";
 import path from "path";
-import axios from "axios";
-import { v4 as uuidv4 } from 'uuid';
+import { GoogleGenerativeAI } from "@google/genai";
 
 const app = express();
-app.use(express.json());
 const port = process.env.PORT || 8000;
 
-// Configs
-const BOT_API_KEY = process.env.BOT_API_KEY || "LUCIFER-V26-KEY";
+// Gemini AI Setup (ඔයාගේ API Key එක මෙතනට දාන්න)
+const genAI = new GoogleGenerativeAI("ඔයාගේ_GEMINI_API_KEY_එක");
 
 const tempSessionDir = path.join(process.cwd(), 'temp_sessions');
 if (!fs.existsSync(tempSessionDir)) fs.mkdirSync(tempSessionDir);
-
-// Helper: Webhook Sender
-async function sendWebhook(url, auth, payload) {
-    try {
-        await axios.post(url, payload, {
-            headers: { Authorization: auth },
-        });
-    } catch (err) {
-        console.error(`Webhook Error: ${err.message}`);
-    }
-}
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'index.html'));
 });
 
-// POST /api/pair - logic based on your request
-app.post('/api/pair', async (req, res) => {
-    const apiKey = req.headers["x-api-key"];
-    const webhookUrl = req.headers["x-webhook-url"];
-    const webhookAuth = req.headers["x-webhook-auth"];
-    const { phoneNumber } = req.body;
+app.get('/pairing', async (req, res) => {
+    let num = req.query.number;
+    if (!num) return res.json({ error: "No number" });
 
-    if (apiKey !== BOT_API_KEY) return res.status(403).json({ success: false, message: "Invalid API Key" });
-    if (!phoneNumber || !webhookUrl) return res.status(400).json({ success: false, message: "Missing params" });
-
-    const digits = phoneNumber.replace(/\D/g, "");
-    const sessionId = uuidv4();
-    const sessionPath = path.join(tempSessionDir, sessionId);
-
-    res.status(202).json({ success: true, message: "started", sessionId });
-
+    num = num.replace(/[^0-9]/g, '');
+    const sessionID = `LUCIFER_${uuidv4().split('-')[0]}`;
+    const sessionPath = path.join(tempSessionDir, sessionID);
+    
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     const { version } = await fetchLatestBaileysVersion();
 
     const conn = makeWASocket({
         auth: state,
         version,
+        printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        // FIX: නව Baileys version එකට ගැළපෙන Browser array එක
+        browser: ["Ubuntu", "Chrome", "20.0.04"], 
         syncFullHistory: false,
-        markOnlineOnConnect: true
+        markOnlineOnConnect: true,
+        connectTimeoutMs: 30000
     });
 
-    conn.ev.on('creds.update', saveCreds);
-
-    // Get Pairing Code
     try {
         if (!conn.authState.creds.registered) {
             await delay(3000);
-            const code = await conn.requestPairingCode(digits);
-            await sendWebhook(webhookUrl, webhookAuth, {
-                type: "pairing_code",
-                code,
-                sessionId
-            });
+            const code = await conn.requestPairingCode(num);
+            if (code && !res.headersSent) {
+                res.json({ code: code });
+            }
         }
-    } catch (err) {
-        await sendWebhook(webhookUrl, webhookAuth, { type: "error", message: err.message, sessionId });
+    } catch (e) {
+        console.log("Pairing Error:", e);
+        if (!res.headersSent) res.json({ error: "Pairing Failed" });
     }
 
-    // Connection Monitor
+    conn.ev.on('creds.update', saveCreds);
+
     conn.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
-
         if (connection === 'open') {
-            // Stability Wait (5s) as per your logic
-            await delay(5000);
-            await sendWebhook(webhookUrl, webhookAuth, {
-                type: "pair_complete",
-                sessionId
-            });
-            
-            // Auto logout to save Heroku resources
+            await conn.sendMessage(conn.user.id, { text: "*LUCIFER-MD V26 CONNECTED*" });
             setTimeout(async () => {
                 await conn.logout();
                 if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-            }, 5000);
+            }, 10000);
         }
-
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
-            if (reason !== 401) {
+            if (reason !== DisconnectReason.loggedOut) {
                 if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
             }
         }
@@ -111,5 +81,5 @@ app.post('/api/pair', async (req, res) => {
 });
 
 app.listen(port, "0.0.0.0", () => {
-    console.log(`LUCIFER-MD API SERVER RUNNING ON PORT ${port}`);
+    console.log(`Server started on ${port}`);
 });

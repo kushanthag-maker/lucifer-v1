@@ -9,98 +9,107 @@ import {
 import pino from "pino";
 import fs from "fs-extra";
 import path from "path";
+import axios from "axios";
+import { v4 as uuidv4 } from 'uuid';
 
 const app = express();
+app.use(express.json());
 const port = process.env.PORT || 8000;
 
-// Temporary sessions directory setup
+// Configs
+const BOT_API_KEY = process.env.BOT_API_KEY || "LUCIFER-V26-KEY";
+
 const tempSessionDir = path.join(process.cwd(), 'temp_sessions');
-if (!fs.existsSync(tempSessionDir)) {
-    fs.mkdirSync(tempSessionDir);
+if (!fs.existsSync(tempSessionDir)) fs.mkdirSync(tempSessionDir);
+
+// Helper: Webhook Sender
+async function sendWebhook(url, auth, payload) {
+    try {
+        await axios.post(url, payload, {
+            headers: { Authorization: auth },
+        });
+    } catch (err) {
+        console.error(`Webhook Error: ${err.message}`);
+    }
 }
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'index.html'));
 });
 
-app.get('/pairing', async (req, res) => {
-    let num = req.query.number;
-    if (!num) return res.json({ error: "NULL" });
+// POST /api/pair - logic based on your request
+app.post('/api/pair', async (req, res) => {
+    const apiKey = req.headers["x-api-key"];
+    const webhookUrl = req.headers["x-webhook-url"];
+    const webhookAuth = req.headers["x-webhook-auth"];
+    const { phoneNumber } = req.body;
 
-    // Clean phone number format
-    num = num.replace(/[^0-9]/g, '');
+    if (apiKey !== BOT_API_KEY) return res.status(403).json({ success: false, message: "Invalid API Key" });
+    if (!phoneNumber || !webhookUrl) return res.status(400).json({ success: false, message: "Missing params" });
 
-    const sessionID = `session_${num}_${Date.now()}`;
-    const sessionPath = path.join(tempSessionDir, sessionID);
-    
+    const digits = phoneNumber.replace(/\D/g, "");
+    const sessionId = uuidv4();
+    const sessionPath = path.join(tempSessionDir, sessionId);
+
+    res.status(202).json({ success: true, message: "started", sessionId });
+
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     const { version } = await fetchLatestBaileysVersion();
 
     const conn = makeWASocket({
         auth: state,
         version,
-        printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        
-        // පයිරින් කෝඩ් එක නිවැරදි වීමට සහ වේගවත් වීමට Ubuntu Chrome පාවිච්චි කරයි
-        browser: Browsers.ubuntu("Chrome"),
-        
-        // --- Turbo & Login Fix Settings ---
-        syncFullHistory: false, 
-        markOnlineOnConnect: true,
-        connectTimeoutMs: 30000,
-        defaultQueryTimeoutMs: 30000, 
-        keepAliveIntervalMs: 10000,
-        generateHighQualityLinkPreview: false,
-        msgRetryCounterCache: pino({ level: "silent" }),
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        syncFullHistory: false,
+        markOnlineOnConnect: true
     });
-
-    try {
-        if (!conn.authState.creds.registered) {
-            // Socket එක ස්ථාවර වීමට තත්පර 2ක් රැඳී සිටීම
-            await delay(2000);
-            let code = await conn.requestPairingCode(num);
-            
-            if (code && !res.headersSent) {
-                res.json({ code: code });
-            }
-        }
-    } catch (e) {
-        if (!res.headersSent) res.json({ error: "ERROR" });
-    }
 
     conn.ev.on('creds.update', saveCreds);
 
+    // Get Pairing Code
+    try {
+        if (!conn.authState.creds.registered) {
+            await delay(3000);
+            const code = await conn.requestPairingCode(digits);
+            await sendWebhook(webhookUrl, webhookAuth, {
+                type: "pairing_code",
+                code,
+                sessionId
+            });
+        }
+    } catch (err) {
+        await sendWebhook(webhookUrl, webhookAuth, { type: "error", message: err.message, sessionId });
+    }
+
+    // Connection Monitor
     conn.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
 
         if (connection === 'open') {
-            try {
-                // යුසර්ට සාර්ථක පණිවිඩයක් යැවීම
-                await conn.sendMessage(conn.user.id, { 
-                    text: "*✅ LUCIFER-MD V26 CONNECTED*\n\nYour session is ready for use." 
-                });
-
-                // ලොග් වූ පසු සර්වර් එකේ ඉඩ ඉතිරි කිරීමට සෙෂන් එක මකා දැමීම
-                setTimeout(async () => {
-                    await conn.logout();
-                    if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-                }, 10000);
-            } catch (err) {}
+            // Stability Wait (5s) as per your logic
+            await delay(5000);
+            await sendWebhook(webhookUrl, webhookAuth, {
+                type: "pair_complete",
+                sessionId
+            });
+            
+            // Auto logout to save Heroku resources
+            setTimeout(async () => {
+                await conn.logout();
+                if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
+            }, 5000);
         }
 
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
             if (reason !== 401) {
-                setTimeout(() => {
-                    if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
-                }, 5000);
+                if (fs.existsSync(sessionPath)) fs.removeSync(sessionPath);
             }
         }
     });
 });
 
 app.listen(port, "0.0.0.0", () => {
-    // Console output for tracking
-    console.log(`LUCIFER-MD PAIRING ACTIVE ON PORT ${port}`);
+    console.log(`LUCIFER-MD API SERVER RUNNING ON PORT ${port}`);
 });
